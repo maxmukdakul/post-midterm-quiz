@@ -2,6 +2,11 @@ import csv, os
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
+movie = []
+with open(os.path.join(__location__, 'movies.csv')) as f:
+    rows = csv.DictReader(f)
+    for r in rows:
+        movie.append(dict(r))
 
 class DB:
     def __init__(self):
@@ -15,13 +20,16 @@ class DB:
             if table.table_name == table_name:
                 return table
         return None
-    
+
+
 import copy
+
+
 class Table:
     def __init__(self, table_name, table):
         self.table_name = table_name
         self.table = table
-    
+
     def join(self, other_table, common_key):
         joined_table = Table(self.table_name + '_joins_' + other_table.table_name, [])
         for item1 in self.table:
@@ -32,7 +40,7 @@ class Table:
                     dict1.update(dict2)
                     joined_table.table.append(dict1)
         return joined_table
-    
+
     def filter(self, condition):
         filtered_table = Table(self.table_name + '_filtered', [])
         for item1 in self.table:
@@ -41,7 +49,7 @@ class Table:
         return filtered_table
 
     def __is_float(self, element):
-        if element is None: 
+        if element is None:
             return False
         try:
             float(element)
@@ -57,7 +65,7 @@ class Table:
             else:
                 temps.append(item1[aggregation_key])
         return function(temps)
-    
+
     def select(self, attributes_list):
         temps = []
         for item1 in self.table:
@@ -99,4 +107,43 @@ class Table:
 
     def __str__(self):
         return self.table_name + ':' + str(self.table)
+
+    def insert_row(self, dict):
+        self.table.append(dict)
+
+    def update_row(self, primary_attribute, primary_attribute_value, update_attribute, update_value):
+        # my_table.update_row('Film', 'A Serious Man', 'Year', '2022') will change the 'Year' attribute for the 'Film'
+        for i in self.table:
+            if i[primary_attribute] == primary_attribute_value:
+                i[update_attribute] = update_value
+
+
+my_db = DB()
+movie_table = Table('movie', movie)
+my_db.insert(movie_table)
+comedy_table = movie_table.filter(lambda x: x['Genre'] == 'Comedy')
+world_table = comedy_table.aggregate(lambda x: sum(x)/len(x), 'Worldwide Gross')
+print(f'{world_table:.2f}')
+drama_table = movie_table.filter(lambda x: x['Genre'] == 'Drama')
+audince_score = drama_table.aggregate(lambda x: min(x), 'Audience score %')
+print(f'{audince_score:.2f}')
+fantasy_table = movie_table.filter(lambda x: x['Genre'] == 'Fantasy')
+count_fantasy = fantasy_table.aggregate(lambda x: len(x), 'Genre')
+print(count_fantasy)
+
+dict = {}
+dict['Film'] = 'The Shape of Water'
+dict['Genre'] = 'Fantasy'
+dict['Lead Studio'] = 'Fox'
+dict['Audience score %'] = '72'
+dict['Profitability'] = '9.765'
+dict['Rotten Tomatoes %'] = '92'
+dict['Worldwide Gross'] = '195.3'
+dict['Year'] = '2017'
+movie_table.insert_row(dict)
+
+print(movie_table.filter(lambda m: m['Genre'] == 'Fantasy').aggregate(len, 'Film'))
+
+movie_table.update_row('Film', 'A Serious Man', 'Year', '2022')
+
 
